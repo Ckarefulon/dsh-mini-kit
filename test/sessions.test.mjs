@@ -1,36 +1,45 @@
 import assert from 'node:assert/strict'
+import { join } from 'node:path'
 import { test } from 'node:test'
 
 import { createSessionIndex, formatRow, pathKey } from '../lib/sessions.js'
 import { createFakeContext } from './helpers.mjs'
 
-test('pathKey treats Windows paths case-insensitively and ignores trailing separators', () => {
-  assert.equal(pathKey('C:\\Work\\Alpha\\'), pathKey('c:/work/alpha'))
+const WINDOWS = process.platform === 'win32'
+
+/** A workspace directory, spelled the way this platform spells one. */
+const ALPHA = join(process.env.SystemDrive ?? '/', 'Work', 'Alpha')
+
+test('pathKey ignores a trailing separator everywhere, and case on Windows', () => {
+  assert.equal(pathKey(ALPHA), pathKey(`${ALPHA}${WINDOWS ? '\\' : '/'}`))
   assert.equal(pathKey(''), '')
   assert.equal(pathKey(undefined), '')
+  if (WINDOWS) assert.equal(pathKey('C:\\Work\\Alpha\\'), pathKey('c:/work/alpha'))
 })
 
 test('runningUserRows reports only turns in flight, with workspace and title', () => {
   const fake = createFakeContext({
     sessions: [
-      { id: 's1', running: true, cwd: 'C:\\Work\\Alpha', title: 'Fix the login page' },
-      { id: 's2', running: false, cwd: 'C:\\Work\\Alpha', title: 'Idle session' },
-      { id: 's3', running: true, cwd: 'C:\\Work\\Alpha', title: 'Child worker', parentSession: 's1' },
+      { id: 's1', running: true, cwd: ALPHA, title: 'Fix the login page' },
+      { id: 's2', running: false, cwd: ALPHA, title: 'Idle session' },
+      { id: 's3', running: true, cwd: ALPHA, title: 'Child worker', parentSession: 's1' },
     ],
-    workspaces: [{ path: 'c:/work/alpha', title: 'Alpha' }],
+    // Registered the way a Windows user would see it: different case, native separators.
+    workspaces: [{ path: WINDOWS ? ALPHA.toUpperCase() : ALPHA, title: 'Alpha' }],
   })
 
   const index = createSessionIndex(fake.ctx)
   assert.deepEqual(index.runningUserRows(), [
-    { id: 's1', title: 'Fix the login page', workspace: 'Alpha', cwd: 'C:\\Work\\Alpha', subagent: false },
+    { id: 's1', title: 'Fix the login page', workspace: 'Alpha', cwd: ALPHA, subagent: false },
   ])
   assert.equal(index.runningRows().length, 2)
 })
 
 test('a Session outside every registered workspace falls back to its directory name', () => {
+  const loose = join(process.env.SystemDrive ?? '/', 'Scratch', 'Loose')
   const fake = createFakeContext({
-    sessions: [{ id: 's1', running: true, cwd: 'D:\\Scratch\\Loose', title: null }],
-    workspaces: [{ path: 'C:\\Work\\Alpha', title: 'Alpha' }],
+    sessions: [{ id: 's1', running: true, cwd: loose, title: null }],
+    workspaces: [{ path: ALPHA, title: 'Alpha' }],
   })
   const [row] = createSessionIndex(fake.ctx).runningUserRows()
   assert.equal(row.workspace, 'Loose')
@@ -49,7 +58,7 @@ test('a subagent is excluded both by parent lineage and by declared origin', () 
 })
 
 test('missing optional services degrade instead of throwing', () => {
-  const fake = createFakeContext({ sessions: [{ id: 's1', running: true, cwd: 'C:\\Work\\Alpha' }] })
+  const fake = createFakeContext({ sessions: [{ id: 's1', running: true, cwd: ALPHA }] })
   delete fake.services.sessionProjections
   delete fake.services.workspaceRegistry
   const [row] = createSessionIndex(fake.ctx).runningUserRows()

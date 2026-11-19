@@ -16,8 +16,13 @@ test('stateDir honours an explicit override, else DSH_HOME, else ~/.dsh', () => 
 
   const previous = process.env.DSH_HOME
   try {
-    process.env.DSH_HOME = 'C:\\home-from-env'
-    assert.equal(resolveStateDir({ stateDir: '' }), join('C:\\home-from-env', 'mini-kit'))
+    process.env.DSH_HOME = join('C:\\', 'home-from-env')
+    assert.equal(resolveStateDir({ stateDir: '' }), join(process.env.DSH_HOME, 'mini-kit'))
+    // Whitespace is the same as unset: an empty variable must not produce a
+    // state directory of `mini-kit` relative to the process working directory.
+    process.env.DSH_HOME = '   '
+    assert.match(resolveStateDir({ stateDir: '' }), /mini-kit$/u)
+    assert.equal(resolveStateDir({ stateDir: '' }).startsWith(process.cwd()), false)
     delete process.env.DSH_HOME
     assert.match(resolveStateDir({ stateDir: '' }), /mini-kit$/u)
   } finally {
