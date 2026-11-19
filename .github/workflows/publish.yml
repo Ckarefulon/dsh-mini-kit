@@ -76,10 +76,16 @@ jobs:
       - name: Test
         run: npm test
 
-      # `npm view <name>@<version>` exits non-zero when the version is absent,
-      # which is exactly the "not released yet" case. npm publish would refuse a
-      # duplicate anyway; this gate turns that hard failure into a quiet skip so
-      # an unrelated push does not show up as a red run.
+      # Two conditions, in this order:
+      #
+      #   1. The *package* must already exist on the registry. Trusted Publishing
+      #      is bound to a package that exists, so a brand-new name cannot be
+      #      published this way — its first release is a manual `npm publish`.
+      #      Saying so as a notice is better than a red run that looks like a
+      #      broken credential.
+      #   2. The *version* must not exist yet. `npm publish` would refuse a
+      #      duplicate anyway; this gate turns that hard failure into a quiet
+      #      skip so an unrelated push does not show up as a red run.
       #
       # Written for PowerShell, which is the Windows runner's default shell: the
       # bash spelling (`set -euo pipefail`) would fail here before npm ever ran.
@@ -89,6 +95,13 @@ jobs:
           $name = node -p "require('./package.json').name"
           $version = node -p "require('./package.json').version"
           if ($LASTEXITCODE -ne 0) { throw "could not read the package manifest" }
+
+          npm view "$name" version *> $null
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::notice::$name is not on the registry yet - nothing to publish."
+            Write-Host "A brand-new package cannot use Trusted Publishing: publish its first release manually with ``npm publish``, then bind this repository and workflow on npmjs.com."
+            exit 0
+          }
 
           npm view "$name@$version" version *> $null
           if ($LASTEXITCODE -eq 0) {
