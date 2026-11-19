@@ -20,3 +20,6 @@ Desktop.ini
 test/.scratch/
 coverage/
 *.tgz
+
+# A local npm cache, used when the default one is not writable.
+.npm-cache/
