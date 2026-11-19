@@ -1,0 +1,22 @@
+# Dependencies: this package has none at runtime (its one peer is supplied by
+# DSH), and the local install exists only so the test suite can import the peer.
+node_modules/
+
+# The plugin's own runtime state never belongs in the repository, and one of
+# these files is written by the process that is about to be killed.
+pending-restart.json
+pending-restart.json.*
+restart.log
+*.claimed
+
+# Editors and OS noise.
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Test scratch space.
+test/.scratch/
+coverage/
+*.tgz

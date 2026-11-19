@@ -1,0 +1,89 @@
+# Publish dsh-mini-kit to npm.
+#
+# The whole design is one sentence: **a push to `main` publishes, if and only if
+# `package.json`'s `version` is not on the registry yet.** Forgetting to bump the
+# version is not a silent no-op buried in a log — it is a green run that says so,
+# and bumping it is the entire release procedure.
+#
+# Two consequences worth stating, because they are the two ways this breaks:
+#
+#   * Authentication is npm Trusted Publishing (OIDC), so there is **no token
+#     secret anywhere**. `id-token: write` is the whole credential; drop it and
+#     the publish dies with ENEEDAUTH, which reads like a missing token but is
+#     really a missing permission.
+#   * `actions/setup-node`'s `registry-url` input is deliberately NOT used: it
+#     writes `_authToken=${NODE_AUTH_TOKEN}` into `~/.npmrc`, and that literal
+#     placeholder is then sent as a credential. The registry comes from
+#     `publishConfig` in package.json instead.
+#
+# Trusted Publisher has to be configured on npmjs.com once, per package, and the
+# workflow filename below must match what was typed there (`publish.yml`).
+# A brand-new package cannot be published this way — the first release is a
+# manual `npm publish`, and the binding comes after the name exists.
+name: Publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Serialize runs so two pushes cannot race the same version. Queued, not
+# cancelled: an in-flight publish must be allowed to finish.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      # Trusted Publishing is a feature of the npm CLI, not of Node: the OIDC
+      # token exchange lives in npm's own lib/utils/oidc.js, which exists in
+      # npm 11.5.1+ and NOT in the npm 10.x that Node 22 ships. On npm 10 the
+      # exchange never happens, npm falls through to "no credentials", and the
+      # publish dies with ENEEDAUTH -- which reads like a missing token but is
+      # really an npm too old to speak OIDC. Pin the floor explicitly.
+      - name: Ensure an npm that supports Trusted Publishing
+        run: |
+          npm install -g npm@^11.5.1
+          npm --version
+
+      # The host half imports its one PEER dependency (`@deepseek-ai/schemastery`,
+      # which pulls `@deepseek-ai/cosmokit`), which this repository deliberately
+      # does not vendor -- DSH supplies it at runtime. The suite imports the real
+      # module rather than stubbing it, so it has to be resolvable here.
+      - name: Install the peer dependency for the test suite
+        run: npm install --no-save --no-package-lock "@deepseek-ai/schemastery@>=3.18.0 <4"
+
+      # Every restart path is exercised against a fake context; the suite must
+      # never be able to actually restart the runner.
+      - name: Test
+        run: npm test
+
+      # `npm view <name>@<version>` exits non-zero when the version is absent,
+      # which is exactly the "not released yet" case. npm publish would refuse a
+      # duplicate anyway; this gate turns that hard failure into a quiet skip so
+      # an unrelated push does not show up as a red run.
+      - name: Publish unless this version is already on the registry
+        run: |
+          set -euo pipefail
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "${name}@${version}" version >/dev/null 2>&1; then
+            echo "::notice::${name}@${version} is already published - nothing to do."
+            echo "Bump \"version\" in package.json to release a change."
+            exit 0
+          fi
+          echo "::notice::publishing ${name}@${version}"
+          npm publish

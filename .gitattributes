@@ -1,0 +1,16 @@
+# Normalize every text file to LF. Two of the shipped files are read verbatim by
+# a runtime that does not normalize anything: the supervisor script a detached
+# helper executes, and the JSON record a different process generation parses.
+# Keeping the committed bytes stable across platforms keeps those reads boring.
+* text=auto eol=lf
+
+# Binary assets are never touched.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# GitHub language stats: the shipped code is JavaScript.
+*.js linguist-language=JavaScript
+*.mjs linguist-language=JavaScript

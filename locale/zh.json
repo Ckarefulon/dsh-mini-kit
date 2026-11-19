@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "迷你工具包",
+    "description": "重启 DSH 并让当时正在运行的会话继续，以及查看当前有哪些会话正在跑。",
+    "detail": "docs/DETAIL.md"
+  }
+}

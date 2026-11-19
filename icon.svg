@@ -1,0 +1,14 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mini kit">
+  <title>Mini kit</title>
+  <!--
+    "Restart the whole thing" as one mark: a circular arrow that is deliberately
+    open at the top-right, plus a small square inside the loop standing for the
+    sessions that survive the trip. Saturn-ring proportions rather than a plain
+    gear, so it is not mistaken for the settings icon in the same row.
+  -->
+  <g stroke="#4F6BED" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28.5 12.2A11 11 0 1 0 29 22.6" />
+    <path d="M28.9 6.4V12.9H22.4" />
+  </g>
+  <rect x="14.6" y="14.6" width="6.8" height="6.8" rx="1.9" fill="#4F6BED" />
+</svg>

@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Mini Kit",
+    "description": "Restart the app and continue the sessions that were running, and list what is running now.",
+    "detail": "docs/DETAIL.md"
+  }
+}

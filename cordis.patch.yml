@@ -1,0 +1,16 @@
+# dsh-mini-kit — loader rows.
+#
+# One host-only row. There is no `dsh.client` declaration in package.json, so
+# nothing of this package loads in the browser: the two capabilities are a Tool
+# the model calls and a slash command the composer runs, both served by this row.
+#
+# `id` must equal the package name: the profile's own patch layer keys the row
+# by it, so a rename here would shadow a user's saved config instead of
+# inheriting it.
+#
+# `config` is deliberately absent. Every field has a default, and writing values
+# in this package would shadow whatever the user later edits in their profile
+# layer — the same reason the bundle ships no config block at all.
+- insert:
+    - id: dsh-mini-kit
+      name: dsh-mini-kit
